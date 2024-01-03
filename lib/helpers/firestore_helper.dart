@@ -4,6 +4,7 @@ import 'package:chat_app_2/modals/detail_madal.dart';
 import 'package:chat_app_2/modals/friend_modal.dart';
 import 'package:chat_app_2/modals/user_modal.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class FireStoreHelper {
   FireStoreHelper._();
@@ -39,6 +40,11 @@ class FireStoreHelper {
       lastName: detailModal.lastName,
       email: detailModal.email,
       profilePic: detailModal.image,
+      status: "seen",
+      lastMessage: "",
+      messageCount: 0,
+      isOnline: false,
+      lastActive: DateTime.now(),
     );
 
     await fireStore
@@ -117,5 +123,89 @@ class FireStoreHelper {
         .collection(senderId)
         .doc(chatModal.dateTime.millisecondsSinceEpoch.toString())
         .update(data);
+  }
+
+  Future<void> updateStatus({required String id}) async {
+    User? user = Auth.auth.firebaseAuth.currentUser;
+    await fireStore
+        .collection(collectionPath)
+        .doc(user?.email)
+        .collection(collection)
+        .doc(id)
+        .update({'status': "seen"});
+  }
+
+  Future<void> updateStatus2({required String id}) async {
+    User? user = Auth.auth.firebaseAuth.currentUser;
+    await fireStore
+        .collection(collectionPath)
+        .doc(id)
+        .collection(collection)
+        .doc(user?.email)
+        .update({'status': "unseen"});
+  }
+
+  Future<void> getLastMessage(
+      {required String id,
+      required String msg,
+      required FriendModal friendModal}) async {
+    User? user = Auth.auth.firebaseAuth.currentUser;
+
+    await fireStore
+        .collection(collectionPath)
+        .doc(user?.email)
+        .collection(collection)
+        .doc(id)
+        .update({'lastMessage': msg});
+
+    await fireStore
+        .collection(collectionPath)
+        .doc(id)
+        .collection(collection)
+        .doc(user?.email)
+        .update({'lastMessage': msg});
+  }
+
+  unseenCount({required String id, required FriendModal friendModal}) async {
+    int count = friendModal.messageCount;
+
+    if (friendModal.status == "unseen") {
+      count++;
+    } else {
+      count = 0;
+    }
+
+    User? user = Auth.auth.firebaseAuth.currentUser;
+    await fireStore
+        .collection(collectionPath)
+        .doc(id)
+        .collection(collection)
+        .doc(user?.email)
+        .update({'messageCount': count});
+  }
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> userInfo(
+      {required FriendModal friendModal}) {
+    User? user = Auth.auth.firebaseAuth.currentUser;
+
+    return fireStore
+        .collection(collectionPath)
+        .doc(user?.email)
+        .collection(collection)
+        .where('email', isEqualTo: friendModal.email)
+        .snapshots();
+  }
+
+  updateActiveStatus({required bool isOnline, required String id}) {
+    User? user = Auth.auth.firebaseAuth.currentUser;
+    fireStore
+        .collection(collectionPath)
+        .doc(user?.email)
+        .collection(collection)
+        .doc(id)
+        .update({
+      'isOnline': isOnline,
+      'lastActive': DateTime.now().millisecondsSinceEpoch.toString()
+    });
   }
 }

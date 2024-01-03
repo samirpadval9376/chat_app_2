@@ -52,9 +52,11 @@ class HomePage extends StatelessWidget {
               itemCount: allFriends.length,
               itemBuilder: (context, index) {
                 FriendModal friendModal = allFriends[index];
-
                 return ListTile(
-                  onTap: () {
+                  onTap: () async {
+                    await FireStoreHelper.fireStoreHelper
+                        .updateStatus(id: friendModal.email);
+
                     Navigator.of(context).pushNamed(
                       'chat_page',
                       arguments: friendModal,
@@ -72,7 +74,13 @@ class HomePage extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  subtitle: Text(""),
+                  subtitle: Text(friendModal.lastMessage),
+                  trailing: (friendModal.status == "unseen")
+                      ? Container(
+                          color: Colors.blue,
+                          child: Text(friendModal.messageCount.toString()),
+                        )
+                      : Text(""),
                 );
               },
             );

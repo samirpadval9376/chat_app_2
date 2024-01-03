@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:chat_app_2/helpers/auth_helper.dart';
 import 'package:chat_app_2/helpers/firestore_helper.dart';
 import 'package:chat_app_2/modals/chat_modal.dart';
@@ -7,10 +9,33 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
-class ChatPage extends StatelessWidget {
-  ChatPage({super.key});
+class ChatPage extends StatefulWidget {
+  const ChatPage({super.key});
+
+  @override
+  State<ChatPage> createState() => _ChatPageState();
+}
+
+class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
 
   User? user = Auth.auth.firebaseAuth.currentUser;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    if (state.name == "resumed") {}
+
+    log("=============================");
+    log("Current State :- ${state.name}");
+    log("=============================");
+  }
+
   TextEditingController chatController = TextEditingController();
 
   @override
@@ -20,11 +45,13 @@ class ChatPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          "${friendModal.firstName} ${friendModal.lastName}",
-          style: const TextStyle(
-            color: Colors.white,
-          ),
+        title: Column(
+          children: [
+            Text("${friendModal.firstName} ${friendModal.lastName}"),
+            Text(friendModal.isOnline == true
+                ? 'Online'
+                : "${friendModal.lastActive.hour}:${friendModal.lastActive.minute}"),
+          ],
         ),
         centerTitle: true,
         backgroundColor: Colors.indigo.shade900,
@@ -171,13 +198,32 @@ class ChatPage extends StatelessWidget {
 
                             FireStoreHelper.fireStoreHelper
                                 .sentMessage(
-                                  chatModal: chatModal,
-                                  senderId: user?.email as String,
-                                  receiverId: friendModal.email,
-                                )
+                              chatModal: chatModal,
+                              senderId: user?.email as String,
+                              receiverId: friendModal.email,
+                            )
                                 .then(
-                                  (value) => chatController.clear(),
-                                );
+                              (value) async {
+                                chatController.clear();
+                                await FireStoreHelper.fireStoreHelper
+                                    .updateStatus2(id: friendModal.email);
+
+                                await FireStoreHelper.fireStoreHelper
+                                    .getLastMessage(
+                                        id: friendModal.email,
+                                        msg: chatModal.msg,
+                                        friendModal: friendModal);
+
+                                await FireStoreHelper.fireStoreHelper
+                                    .unseenCount(
+                                        id: friendModal.email,
+                                        friendModal: friendModal);
+
+                                log("=====================================");
+                                log(friendModal.lastMessage.length.toString());
+                                log("=====================================");
+                              },
+                            );
                           },
                           elevation: 0,
                           shape: RoundedRectangleBorder(
